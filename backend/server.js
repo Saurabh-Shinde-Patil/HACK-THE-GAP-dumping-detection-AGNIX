@@ -71,6 +71,21 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/audit', auditRoutes);
 
+// Root route - Status Page
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: white;">
+        <div style="text-align: center; border: 1px solid #334155; padding: 2rem; border-radius: 12px; background: #1e293b;">
+          <h1 style="color: #22c55e;">🚀 CleanCity Backend is Live</h1>
+          <p>Version 1.0.0 | Environment: ${process.env.NODE_ENV || 'development'}</p>
+          <a href="/api/health" style="color: #38bdf8; text-decoration: none;">Check API Health →</a>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'CleanCity API is running', timestamp: new Date().toISOString() });
