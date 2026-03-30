@@ -40,7 +40,6 @@ def train_custom_dataset(data_yaml_path, epochs=50, batch_size=16, imgsz=640, mo
         imgsz=imgsz,
         project="garbage_runs",  # Folder where results will be saved
         name="garbage_model",    # Name of the sub-folder for this specific run
-        device="auto"            # Automatically use GPU if available, else CPU
     )
 
     print("\n" + "=" * 60)
