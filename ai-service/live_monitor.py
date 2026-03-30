@@ -141,8 +141,45 @@ def run_monitor(args):
 
     # Determine video source
     if args.source == "webcam":
-        cap = cv2.VideoCapture(0)
-        source_label = "Webcam (index 0)"
+        # On Windows, use DirectShow backend (more reliable than MSMF)
+        cap = None
+        cam_index = 0
+        backends = [
+            (cv2.CAP_DSHOW, "DirectShow"),
+            (cv2.CAP_MSMF, "MSMF"),
+            (cv2.CAP_ANY, "Auto"),
+        ]
+        for backend, backend_name in backends:
+            for idx in range(3):  # Try camera indices 0, 1, 2
+                print(f"  🔍 Trying webcam index {idx} with {backend_name} backend...")
+                test_cap = cv2.VideoCapture(idx, backend)
+                if test_cap.isOpened():
+                    ret, test_frame = test_cap.read()
+                    if ret and test_frame is not None:
+                        cap = test_cap
+                        cam_index = idx
+                        print(f"  ✅ Webcam found at index {idx} ({backend_name})")
+                        break
+                    else:
+                        test_cap.release()
+                else:
+                    test_cap.release()
+            if cap is not None:
+                break
+
+        if cap is None:
+            print("\n  ❌ ERROR: No webcam detected!")
+            print("  ─────────────────────────────────────────")
+            print("  Possible fixes:")
+            print("  1. Close any app using the camera (Teams, Zoom, Browser, etc.)")
+            print("  2. Check Windows Settings → Privacy → Camera → Allow apps access")
+            print("  3. Try using a video file instead:")
+            print("     python live_monitor.py --source video --file test_video.mp4")
+            print("  4. Try DroidCam (use your phone as camera):")
+            print("     python live_monitor.py --source droidcam --url http://PHONE_IP:4747/video")
+            sys.exit(1)
+
+        source_label = f"Webcam (index {cam_index})"
     elif args.source == "droidcam":
         if not args.url:
             print("❌ --url is required for DroidCam source")
