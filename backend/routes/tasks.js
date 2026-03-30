@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
 const Report = require('../models/Report');
+const Detection = require('../models/Detection');
 const User = require('../models/User');
 const { authenticate, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -114,6 +115,34 @@ router.put('/:id', authenticate, upload.single('completionImage'), auditLog('UPD
       .populate('assignedWorker', 'name email');
 
     if (!updatedTask) return sendError(res, 404, 'Task not found');
+
+    // --- REVERSE-SYNC WITH CCTV DASHBOARD ---
+    // Check if this task originated from the AI Live Monitor
+    if (status && updatedTask.reportId && updatedTask.reportId.address) {
+      const addressString = updatedTask.reportId.address;
+      if (addressString.startsWith('[CCTV] Alert ID: ')) {
+        const detectionId = addressString.replace('[CCTV] Alert ID: ', '').trim();
+        
+        // Map the Worker's task status back to the Dashboard's detection status
+        let detectionStatus = status; 
+        if (status === 'in-progress') detectionStatus = 'assigned';
+        if (status === 'completed' || status === 'verified') detectionStatus = 'resolved';
+        
+        try {
+          const syncUpdate = { status: detectionStatus };
+          
+          // If the worker marked it completed, give them credit on the CCTV dashboard!
+          if (detectionStatus === 'resolved' && updatedTask.assignedWorker) {
+            syncUpdate.resolvedAt = new Date();
+            syncUpdate.resolvedBy = updatedTask.assignedWorker._id;
+          }
+          
+          await Detection.findByIdAndUpdate(detectionId, syncUpdate);
+        } catch (e) {
+          console.error("Task to CCTV Reverse-Sync Failed:", e);
+        }
+      }
+    }
 
     if (status === 'completed') emitTaskCompleted(updatedTask);
 
