@@ -19,6 +19,13 @@ class GarbageDetector:
     """
 
     def __init__(self, model_path: str = "yolov8n.pt"):
+        import os
+        
+        # Override default base model if the user has successfully trained their own on Roboflow
+        if os.path.exists("best.pt"):
+            model_path = "best.pt"
+            print("🚀 CUSTOM ROBOT TRAINING FOUND! Substituting yolov8n.pt with local best.pt")
+
         # FORCE CPU — torchvision::nms CUDA kernel is not compiled for this env
         self.device = 'cpu'
         self.model = YOLO(model_path)
