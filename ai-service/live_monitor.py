@@ -147,8 +147,23 @@ def run_monitor(args):
         if not args.url:
             print("❌ --url is required for DroidCam source")
             sys.exit(1)
-        cap = cv2.VideoCapture(args.url)
-        source_label = f"DroidCam ({args.url})"
+        
+        url = args.url
+        cap = cv2.VideoCapture(url)
+        
+        # If simple URL fails, try common DroidCam suffixes
+        if not cap.isOpened():
+            print(f"  ⚠️  Initial connection to {url} failed. Trying common suffixes...")
+            suffixes = ["/video", "/mjpegfeed"]
+            for suffix in suffixes:
+                test_url = url.rstrip('/') + suffix
+                print(f"  🔍 Trying: {test_url}")
+                cap = cv2.VideoCapture(test_url)
+                if cap.isOpened():
+                    url = test_url
+                    break
+                    
+        source_label = f"DroidCam ({url})"
     elif args.source == "rtsp":
         if not args.url:
             print("❌ --url is required for RTSP source")
@@ -195,113 +210,140 @@ def run_monitor(args):
     consecutive_count = 0
     last_alert_time = 0
     frame_num = 0
+    failed_reads = 0
+    MAX_FAILED_READS = 5
 
     try:
         while True:
-            ret, frame = cap.read()
-            if not ret:
-                if args.source == "video":
-                    print("📹 Video file ended. Restarting...")
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    continue
+            try:
+                if not cap.isOpened():
+                    print(f"⚠️  Camera disconnected. Attempting to reconnect to {url if args.source == 'droidcam' else source_label}...")
+                    time.sleep(2)
+                    cap = cv2.VideoCapture(url if args.source == 'droidcam' else (args.url or args.file or 0))
+                    if not cap.isOpened():
+                        continue
+                    else:
+                        print("✅ Reconnected to camera successfully.")
+                        failed_reads = 0
+
+                ret, frame = cap.read()
+                if not ret:
+                    if args.source == "video":
+                        print("📹 Video file ended. Restarting...")
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        continue
+                    else:
+                        failed_reads += 1
+                        print(f"❌ Failed to capture frame ({failed_reads}/{MAX_FAILED_READS}). Retrying in 2s...")
+                        time.sleep(2)
+                        if failed_reads >= MAX_FAILED_READS:
+                            print("🔄 Too many failed reads. Forcing reconnect...")
+                            cap.release()
+                        continue
+
+                # Reset consecutive failed reads on success
+                failed_reads = 0
+                frame_num += 1
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                # Run detection
+                if detector:
+                    pil_img = frame_to_pil(frame)
+                    result = detect_local(pil_img, detector)
                 else:
-                    print("❌ Failed to capture frame. Retrying in 3s...")
-                    time.sleep(3)
+                    frame_b64 = frame_to_base64(frame)
+                    result = detect_remote(
+                        frame_b64, args.camera_id, args.camera_name,
+                        args.lat, args.lng
+                    )
+
+                if result is None:
+                    time.sleep(FRAME_INTERVAL)
                     continue
 
-            frame_num += 1
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                detected = result.get("detected", False)
+                confidence = result.get("confidence", 0)
+                label = result.get("label", "none")
+                total = result.get("total_objects", 0)
 
-            # Run detection
-            if detector:
-                pil_img = frame_to_pil(frame)
-                result = detect_local(pil_img, detector)
-            else:
-                frame_b64 = frame_to_base64(frame)
-                result = detect_remote(
-                    frame_b64, args.camera_id, args.camera_name,
-                    args.lat, args.lng
-                )
+                # Status line
+                status = "🟢 DETECTED" if detected and confidence >= CONFIDENCE_THRESHOLD else "⚪ Clear"
+                print(f"  [{timestamp}] Frame #{frame_num:04d} | {status} | "
+                      f"Conf: {confidence:.1%} | Objects: {total} | Label: {label}")
 
-            if result is None:
-                time.sleep(FRAME_INTERVAL)
-                continue
-
-            detected = result.get("detected", False)
-            confidence = result.get("confidence", 0)
-            label = result.get("label", "none")
-            total = result.get("total_objects", 0)
-
-            # Status line
-            status = "🟢 DETECTED" if detected and confidence >= CONFIDENCE_THRESHOLD else "⚪ Clear"
-            print(f"  [{timestamp}] Frame #{frame_num:04d} | {status} | "
-                  f"Conf: {confidence:.1%} | Objects: {total} | Label: {label}")
-
-            # Multi-frame validation
-            if detected and confidence >= CONFIDENCE_THRESHOLD:
-                consecutive_count += 1
-            else:
-                consecutive_count = 0
-
-            # Alert logic: trigger after N consecutive positive frames
-            if consecutive_count >= CONSECUTIVE_FRAMES:
-                now = time.time()
-
-                # Duplicate cooldown check
-                if now - last_alert_time < DUPLICATE_COOLDOWN:
-                    remaining = int(DUPLICATE_COOLDOWN - (now - last_alert_time))
-                    print(f"  ⏳ Cooldown active ({remaining}s remaining). Skipping alert.")
+                # Multi-frame validation
+                if detected and confidence >= CONFIDENCE_THRESHOLD:
+                    consecutive_count += 1
                 else:
-                    print(f"\n  🚨 ALERT! Garbage detected in {CONSECUTIVE_FRAMES} consecutive frames!")
-                    print(f"     Confidence: {confidence:.1%} | Label: {label}")
-
-                    # Save evidence
-                    evidence_path = save_evidence(frame, args.camera_id)
-                    print(f"     📸 Evidence saved: {evidence_path}")
-
-                    # Get annotated image as base64
-                    annotated_b64 = result.get("annotated_image", "")
-                    if not annotated_b64:
-                        annotated_b64 = frame_to_base64(frame)
-
-                    # Send to backend
-                    detection_payload = {
-                        "imageBase64": annotated_b64,
-                        "latitude": args.lat,
-                        "longitude": args.lng,
-                        "address": args.address,
-                        "ward": args.ward,
-                        "confidence": confidence,
-                        "cameraId": args.camera_id,
-                        "cameraName": args.camera_name,
-                        "detectedObjects": result.get("detections", []),
-                        "frameCount": consecutive_count,
-                    }
-
-                    send_to_backend(detection_payload)
-                    last_alert_time = now
                     consecutive_count = 0
-                    print()
 
-            # Display window
-            if args.display:
-                # Draw status overlay on frame
-                color = (0, 0, 255) if detected and confidence >= CONFIDENCE_THRESHOLD else (0, 255, 0)
-                cv2.putText(frame, f"CleanCity Monitor | {args.camera_name}",
-                            (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                cv2.putText(frame, f"Status: {status} | Conf: {confidence:.1%}",
-                            (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-                cv2.putText(frame, f"Consecutive: {consecutive_count}/{CONSECUTIVE_FRAMES}",
-                            (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
-                cv2.putText(frame, timestamp,
-                            (10, frame.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1)
+                # Alert logic: trigger after N consecutive positive frames
+                if consecutive_count >= CONSECUTIVE_FRAMES:
+                    now = time.time()
 
-                cv2.imshow("CleanCity CCTV Monitor", frame)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    print("\n  ⏹️  Monitoring stopped by user (q pressed).")
-                    break
+                    # Duplicate cooldown check
+                    if now - last_alert_time < DUPLICATE_COOLDOWN:
+                        remaining = int(DUPLICATE_COOLDOWN - (now - last_alert_time))
+                        print(f"  ⏳ Cooldown active ({remaining}s remaining). Skipping alert.")
+                    else:
+                        print(f"\n  🚨 ALERT! Garbage detected in {CONSECUTIVE_FRAMES} consecutive frames!")
+                        print(f"     Confidence: {confidence:.1%} | Label: {label}")
 
-            time.sleep(FRAME_INTERVAL)
+                        # Save evidence
+                        evidence_path = save_evidence(frame, args.camera_id)
+                        print(f"     📸 Evidence saved: {evidence_path}")
+
+                        # Get annotated image as base64
+                        annotated_b64 = result.get("annotated_image", "")
+                        if not annotated_b64:
+                            annotated_b64 = frame_to_base64(frame)
+
+                        # Send to backend
+                        detection_payload = {
+                            "imageBase64": annotated_b64,
+                            "latitude": args.lat,
+                            "longitude": args.lng,
+                            "address": args.address,
+                            "ward": args.ward,
+                            "confidence": confidence,
+                            "cameraId": args.camera_id,
+                            "cameraName": args.camera_name,
+                            "detectedObjects": result.get("detections", []),
+                            "frameCount": consecutive_count,
+                        }
+
+                        send_to_backend(detection_payload)
+                        last_alert_time = now
+                        consecutive_count = 0
+                        print()
+
+                # Display window
+                if args.display:
+                    # Draw status overlay on frame
+                    color = (0, 0, 255) if detected and confidence >= CONFIDENCE_THRESHOLD else (0, 255, 0)
+                    cv2.putText(frame, f"CleanCity Monitor | {args.camera_name}",
+                                (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                    cv2.putText(frame, f"Status: {status} | Conf: {confidence:.1%}",
+                                (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                    cv2.putText(frame, f"Consecutive: {consecutive_count}/{CONSECUTIVE_FRAMES}",
+                                (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
+                    cv2.putText(frame, timestamp,
+                                (10, frame.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1)
+
+                    cv2.imshow("CleanCity CCTV Monitor", frame)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        print("\n  ⏹️  Monitoring stopped by user (q pressed).")
+                        break
+
+                time.sleep(FRAME_INTERVAL)
+
+            except Exception as e:
+                print(f"  ❌ Unexpected error in monitoring loop: {e}")
+                print("  🔄 Attempting to recover in 5 seconds...")
+                time.sleep(5)
+                # Force reconnect on next iteration by releasing the capture
+                if cap:
+                    cap.release()
 
     except KeyboardInterrupt:
         print("\n  ⏹️  Monitoring stopped by user (Ctrl+C).")
