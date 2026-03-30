@@ -43,6 +43,16 @@ const emitTaskCompleted = (task) => {
   }
 };
 
+// Broadcast CCTV detection alert
+const emitCCTVDetection = (detection) => {
+  if (io) {
+    io.to('admins').emit('cctv-detection', detection);
+    io.to('superadmins').emit('cctv-detection', detection);
+    io.emit('alert-update', { type: 'cctv-detection', detection });
+    console.log(`📹 CCTV Detection alert emitted — Camera: ${detection.cameraId}, Confidence: ${detection.confidence}`);
+  }
+};
+
 const getIO = () => io;
 
-module.exports = { init, emitNewAlert, emitTaskAssigned, emitTaskCompleted, getIO };
+module.exports = { init, emitNewAlert, emitTaskAssigned, emitTaskCompleted, emitCCTVDetection, getIO };

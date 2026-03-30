@@ -8,11 +8,13 @@ export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
   const socketRef = useRef(null);
   const [alerts, setAlerts] = useState([]);
+  const [cctvAlerts, setCctvAlerts] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     if (user) {
-      const socket = io('http://localhost:5000', { transports: ['websocket'] });
+      const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+      const socket = io(socketUrl, { transports: ['websocket'] });
       socketRef.current = socket;
 
       socket.on('connect', () => {
@@ -30,18 +32,25 @@ export const SocketProvider = ({ children }) => {
         setAlerts((prev) => [{ ...report, _alertTs: Date.now() }, ...prev].slice(0, 50));
       });
 
+      // CCTV detection alerts
+      socket.on('cctv-detection', (detection) => {
+        setCctvAlerts((prev) => [{ ...detection, _alertTs: Date.now() }, ...prev].slice(0, 100));
+      });
+
       socket.on('disconnect', () => setIsConnected(false));
       return () => socket.disconnect();
     }
   }, [user]);
 
   const clearAlerts = () => setAlerts([]);
+  const clearCctvAlerts = () => setCctvAlerts([]);
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, alerts, isConnected, clearAlerts }}>
+    <SocketContext.Provider value={{ socket: socketRef.current, alerts, cctvAlerts, isConnected, clearAlerts, clearCctvAlerts }}>
       {children}
     </SocketContext.Provider>
   );
 };
 
 export const useSocket = () => useContext(SocketContext);
+

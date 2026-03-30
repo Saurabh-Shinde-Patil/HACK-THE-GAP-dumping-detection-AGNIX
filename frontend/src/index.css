@@ -745,3 +745,18 @@ tbody tr:hover td { background: var(--bg-card-hover); color: var(--text-primary)
 /* Smooth transitions */
 * { transition: background-color 0.2s, border-color 0.2s, color 0.2s; }
 button, a { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; }
+
+/* ===== CCTV ALERT ANIMATIONS ===== */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
+  50% { box-shadow: 0 0 20px 4px rgba(239, 68, 68, 0.15); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.alert-card-new {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
