@@ -21,6 +21,7 @@ const taskRoutes = require('./routes/tasks');
 const analyticsRoutes = require('./routes/analytics');
 const userRoutes = require('./routes/users');
 const auditRoutes = require('./routes/audit');
+const detectionRoutes = require('./routes/detections');
 
 // Connect DB
 connectDB();
@@ -71,6 +72,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/detections', detectionRoutes);
 
 // Root route - Status Page
 app.get('/', (req, res) => {

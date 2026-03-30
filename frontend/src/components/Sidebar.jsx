@@ -9,12 +9,14 @@ const CITIZEN_NAV = [
 
 const ADMIN_NAV = [
   { to: '/admin', icon: '📊', label: 'Dashboard' },
+  { to: '/admin/live-alerts', icon: '📹', label: 'Live CCTV Alerts' },
   { to: '/admin/tasks', icon: '✅', label: 'Task Management' },
 ];
 
 const SUPERADMIN_NAV = [
   { to: '/superadmin', icon: '🌆', label: 'City Overview' },
   { to: '/admin', icon: '🗺️', label: 'Alert Dashboard' },
+  { to: '/admin/live-alerts', icon: '📹', label: 'Live CCTV Alerts' },
   { to: '/admin/tasks', icon: '✅', label: 'Tasks' },
   { to: '/superadmin/users', icon: '👥', label: 'User Management' },
   { to: '/superadmin/audit', icon: '📋', label: 'Audit Logs' },
@@ -28,7 +30,7 @@ const rolesNav = { citizen: CITIZEN_NAV, admin: ADMIN_NAV, superadmin: SUPERADMI
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const { alerts, isConnected } = useSocket() || {};
+  const { alerts, cctvAlerts, isConnected } = useSocket() || {};
   const navLinks = rolesNav[user?.role] || CITIZEN_NAV;
 
   const roleLabel = {

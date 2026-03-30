@@ -61,4 +61,10 @@ export const deactivateUser = (id) => API.put(`/users/${id}/deactivate`);
 // Audit
 export const getAuditLogs = (params) => API.get('/audit', { params });
 
+// CCTV Detections
+export const getDetections = (params) => API.get('/detections', { params });
+export const getDetection = (id) => API.get(`/detections/${id}`);
+export const updateDetection = (id, data) => API.put(`/detections/${id}`, data);
+export const getDetectionStats = () => API.get('/detections/stats');
+
 export default API;

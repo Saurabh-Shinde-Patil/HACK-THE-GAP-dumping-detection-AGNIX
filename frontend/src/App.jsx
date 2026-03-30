@@ -12,6 +12,7 @@ import TaskManagement from './pages/admin/TaskManagement';
 import SuperAdminDashboard from './pages/superadmin/Dashboard';
 import UserManagement from './pages/superadmin/UserManagement';
 import AuditLogs from './pages/superadmin/AuditLogs';
+import LiveAlerts from './pages/admin/LiveAlerts';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
@@ -39,6 +40,7 @@ const AppRoutes = () => {
 
       {/* Admin + Worker */}
       <Route path="/admin" element={<ProtectedRoute roles={['admin', 'superadmin']}><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin/live-alerts" element={<ProtectedRoute roles={['admin', 'superadmin']}><LiveAlerts /></ProtectedRoute>} />
       <Route path="/admin/tasks" element={<ProtectedRoute roles={['admin', 'superadmin', 'worker']}><TaskManagement /></ProtectedRoute>} />
 
       {/* Super Admin */}
