@@ -26,6 +26,11 @@ from pathlib import Path
 import requests
 from PIL import Image
 
+# Fix for PyTorch 2.6+ weights_only unpickling errors with YOLOv8
+import torch
+original_load = torch.load
+torch.load = lambda f, *args, **kwargs: original_load(f, *args, **{**kwargs, 'weights_only': False})
+
 # Try to import detector for local detection (faster, no network round-trip)
 try:
     from detector import GarbageDetector
