@@ -26,16 +26,16 @@ router.post('/', validateApiKey, asyncHandler(async (req, res) => {
   if (!confidence) return sendError(res, 400, 'Confidence score is required');
   if (!cameraId) return sendError(res, 400, 'Camera ID is required');
 
-  // Duplicate prevention: same camera within 5 minutes
-  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+  // Duplicate prevention: same camera within 30 seconds (reduced for demo)
+  const thirtySecAgo = new Date(Date.now() - 30 * 1000);
   const duplicate = await Detection.findOne({
     cameraId,
-    createdAt: { $gte: fiveMinAgo },
+    createdAt: { $gte: thirtySecAgo },
     status: { $in: ['pending', 'acknowledged'] },
   });
 
   if (duplicate) {
-    return sendSuccess(res, 200, duplicate, 'Duplicate detection — already reported within 5 minutes');
+    return sendSuccess(res, 200, duplicate, 'Duplicate detection — already reported within 30 seconds');
   }
 
   // Auto severity based on confidence
