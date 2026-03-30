@@ -61,7 +61,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit))
-    .populate('reportId', 'image address ward severity status')
+    .populate('reportId', 'image address ward severity status location')
     .populate('assignedWorker', 'name email phone')
     .populate('assignedBy', 'name email');
 
@@ -102,16 +102,21 @@ router.put('/:id', authenticate, upload.single('completionImage'), auditLog('UPD
     const update = { notes };
     if (status) update.status = status;
     if (req.file) update.completionImage = `/uploads/${req.file.filename}`;
-    if (status === 'completed') {
-      update.completedAt = new Date();
-      // Update report status
+    if (status) {
+      if (status === 'completed') update.completedAt = new Date();
+      if (status === 'verified') update.verifiedAt = new Date();
+      
       const task = await Task.findById(req.params.id);
-      if (task) await Report.findByIdAndUpdate(task.reportId, { status: 'in-progress' });
+      if (task) {
+        // Dynamically sync the underlying report's status so the citizen tracker updates!
+        let reportStatus = status;
+        if (status === 'verified') reportStatus = 'completed';
+        await Report.findByIdAndUpdate(task.reportId, { status: reportStatus });
+      }
     }
-    if (status === 'verified') update.verifiedAt = new Date();
 
     const updatedTask = await Task.findByIdAndUpdate(req.params.id, update, { new: true })
-      .populate('reportId', 'image address ward')
+      .populate('reportId', 'image address ward location')
       .populate('assignedWorker', 'name email');
 
     if (!updatedTask) return sendError(res, 404, 'Task not found');
