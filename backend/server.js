@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('dns').setServers(['8.8.8.8']);
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
