@@ -5,6 +5,12 @@ from typing import Optional, List
 import uvicorn
 import io
 import os
+
+# Fix for PyTorch 2.6+ weights_only unpickling errors with YOLOv8
+import torch
+original_load = torch.load
+torch.load = lambda f, *args, **kwargs: original_load(f, *args, **{**kwargs, 'weights_only': False})
+
 from detector import GarbageDetector
 
 
