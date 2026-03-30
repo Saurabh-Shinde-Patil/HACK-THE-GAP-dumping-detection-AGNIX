@@ -1,0 +1,12 @@
+names:
+- garbage
+nc: 1
+roboflow:
+  license: Public Domain
+  project: fyp-garbage-detection
+  url: https://universe.roboflow.com/fypgarbage/fyp-garbage-detection/dataset/1
+  version: 1
+  workspace: fypgarbage
+test: ../test/images
+train: ../train/images
+val: ../valid/images

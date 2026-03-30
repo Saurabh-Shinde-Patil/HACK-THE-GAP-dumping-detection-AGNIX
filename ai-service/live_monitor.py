@@ -45,9 +45,9 @@ DETECTION_API_KEY = os.environ.get("DETECTION_API_KEY", "cleancity-detection-key
 # Camera defaults
 DEFAULT_CAMERA_ID = "cam-001"
 DEFAULT_CAMERA_NAME = "Main Gate Camera"
-DEFAULT_LAT = 18.5204
-DEFAULT_LNG = 73.8567
-DEFAULT_ADDRESS = "FC Road, Pune"
+DEFAULT_LAT = 19.8762
+DEFAULT_LNG = 75.3433
+DEFAULT_ADDRESS = "Chhatrapati Sambhajinagar (Aurangabad)"
 DEFAULT_WARD = "Ward-1"
 
 # Detection settings
@@ -55,7 +55,6 @@ PROCESS_EVERY_N = 2          # process 1 out of every 2 frames (faster detection
 FRAME_WIDTH = 640            # resize to this width before inference
 FRAME_HEIGHT = 480           # resize to this height before inference
 CONFIDENCE_THRESHOLD = 0.2   # lower threshold for more sensitivity
-DUPLICATE_COOLDOWN = 30      # lowered for responsive demo (30 seconds)
 DISPLAY_WINDOW = True        # show live preview window
 
 # Evidence folder
@@ -278,7 +277,7 @@ def run_monitor(args):
     print(f"  📐 Frame size: {FRAME_WIDTH}×{FRAME_HEIGHT}")
     print(f"  ⏭️  Process every: {PROCESS_EVERY_N}th frame")
     print(f"  🎯 Confidence threshold: {CONFIDENCE_THRESHOLD}")
-    print(f"  🔄 Duplicate cooldown: {DUPLICATE_COOLDOWN}s")
+    print(f"  🔄 Alert Logic: State-Based (reacts to new objects instantly)")
     print(f"  🖥️  Display window: {args.display}")
     print("-" * 60)
 
@@ -294,8 +293,8 @@ def run_monitor(args):
     print("-" * 60)
     print("  ▶️  Monitoring started. Press Ctrl+C or 'q' to stop.\n")
 
-    # State
-    last_alert_time = 0
+    # State tracking: State-Based AI memory
+    last_garbage_state = [] 
     frame_num = 0
     last_status = ""
 
@@ -365,15 +364,15 @@ def run_monitor(args):
             print(f"  [{timestamp}] Frame #{frame_num:04d} | {status} | "
                   f"Conf: {confidence:.1%} | Objects: {total} | Label: {label}")
 
-            # ── alert logic ───────────────────────────────────────────
+            # ── alert logic (State-Based) ─────────────────────────────
             if detected and confidence >= CONFIDENCE_THRESHOLD:
-                now = time.time()
+                # Build a sorted list of current detected labels (e.g., ['bottle', 'cup'])
+                current_labels = sorted([d.get("label", "unknown") for d in result.get("detections", [])])
 
-                if now - last_alert_time < DUPLICATE_COOLDOWN:
-                    pass  # cooldown active, skip backend call
-                else:
-                    print(f"\n  🚨 ALERT! Garbage detected!")
-                    print(f"     Confidence: {confidence:.1%} | Label: {label}")
+                # Check if the state actually changed (to prevent spamming the backend for the same garbage)
+                if current_labels != last_garbage_state:
+                    print(f"\n  🚨 STATE CHANGE! New garbage detected: {current_labels}")
+                    print(f"     Confidence: {confidence:.1%} | Top Label: {label}")
 
                     evidence_path = save_evidence(frame, args.camera_id)
                     print(f"     📸 Evidence saved: {evidence_path}")
@@ -396,8 +395,14 @@ def run_monitor(args):
                     }
 
                     send_to_backend(detection_payload)
-                    last_alert_time = now
+                    last_garbage_state = current_labels
                     print()
+                else:
+                    # Garbage is exactly the same as last processed frame.
+                    pass
+            else:
+                # If nothing is detected, the scene is clean again. Reset state.
+                last_garbage_state = []
 
             # ── display window ────────────────────────────────────────
             if args.display:

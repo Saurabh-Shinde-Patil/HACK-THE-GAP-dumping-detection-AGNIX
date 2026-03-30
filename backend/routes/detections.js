@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Detection = require('../models/Detection');
+const Report = require('../models/Report');
+const Task = require('../models/Task');
 const { authenticate, authorize } = require('../middleware/auth');
+const { emitTaskAssigned } = require('../services/socketService');
 const { emitCCTVDetection } = require('../services/socketService');
 const { sendSuccess, sendError, asyncHandler, paginate, paginateMeta } = require('../utils/helpers');
 
@@ -26,17 +29,7 @@ router.post('/', validateApiKey, asyncHandler(async (req, res) => {
   if (!confidence) return sendError(res, 400, 'Confidence score is required');
   if (!cameraId) return sendError(res, 400, 'Camera ID is required');
 
-  // Duplicate prevention: same camera within 30 seconds (reduced for demo)
-  const thirtySecAgo = new Date(Date.now() - 30 * 1000);
-  const duplicate = await Detection.findOne({
-    cameraId,
-    createdAt: { $gte: thirtySecAgo },
-    status: { $in: ['pending', 'acknowledged'] },
-  });
-
-  if (duplicate) {
-    return sendSuccess(res, 200, duplicate, 'Duplicate detection — already reported within 30 seconds');
-  }
+  // (Removed time-based duplicate prevention. Handled by AI state-tracking.)
 
   // Auto severity based on confidence
   const severity = confidence > 0.85 ? 'critical'
@@ -149,6 +142,42 @@ router.put('/:id', authenticate, authorize('admin', 'superadmin'),
       { new: true, runValidators: true }
     ).populate('assignedTo', 'name email')
      .populate('resolvedBy', 'name email');
+
+    // --- WORKER INTEGRATION FIX ---
+    // If Admin assigned a worker to this CCTV alert, automatically generate 
+    // a standard Task so the field worker can actually see it in their App!
+    if (assignedTo && detection) {
+      // Check if we already created a task for this specific CCTV alert
+      const existingReport = await Report.findOne({ address: `[CCTV] Alert ID: ${detection._id}` });
+
+      if (!existingReport) {
+        // 1. Create a proxy Report for the CCTV Alert
+        const newReport = await Report.create({
+          userId: req.user._id, // the admin who assigned it
+          // handle binary or base64 image data gracefully
+          image: detection.imageBase64 ? `data:image/jpeg;base64,${detection.imageBase64}` : (detection.image || ''),
+          location: detection.location,
+          address: `[CCTV] Alert ID: ${detection._id}`, // Unique tracking ID
+          ward: detection.ward,
+          severity: detection.severity,
+          status: 'assigned',
+          source: 'cctv',
+          assignedTo: assignedTo
+        });
+
+        // 2. Create the unified Task document for the Worker Dashboard
+        const newTask = await Task.create({
+          reportId: newReport._id,
+          assignedWorker: assignedTo,
+          assignedBy: req.user._id,
+          priority: detection.severity === 'critical' ? 'urgent' : detection.severity,
+          notes: 'Auto-generated task from AI CCTV Detection feed. Please resolve immediately.'
+        });
+
+        // Trigger real-time worker notification
+        emitTaskAssigned(assignedTo, newTask);
+      }
+    }
 
     if (!detection) return sendError(res, 404, 'Detection not found');
     sendSuccess(res, 200, detection, 'Detection updated');

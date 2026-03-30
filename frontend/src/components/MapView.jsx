@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 // Simple map component using Leaflet directly (avoids react-leaflet version conflicts)
-export default function MapView({ reports = [], center = [18.5204, 73.8567], zoom = 12, height = '400px' }) {
+export default function MapView({ reports = [], center = [19.8762, 75.3433], zoom = 12, height = '400px' }) {
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
 
