@@ -51,11 +51,11 @@ DEFAULT_ADDRESS = "FC Road, Pune"
 DEFAULT_WARD = "Ward-1"
 
 # Detection settings
-PROCESS_EVERY_N = 5          # process 1 out of every N frames (skip the rest)
+PROCESS_EVERY_N = 2          # process 1 out of every 2 frames (faster detection)
 FRAME_WIDTH = 640            # resize to this width before inference
 FRAME_HEIGHT = 480           # resize to this height before inference
-CONFIDENCE_THRESHOLD = 0.25  # minimum confidence to trigger alert
-DUPLICATE_COOLDOWN = 300     # seconds before re-alerting same camera
+CONFIDENCE_THRESHOLD = 0.2   # lower threshold for more sensitivity
+DUPLICATE_COOLDOWN = 30      # lowered for responsive demo (30 seconds)
 DISPLAY_WINDOW = True        # show live preview window
 
 # Evidence folder

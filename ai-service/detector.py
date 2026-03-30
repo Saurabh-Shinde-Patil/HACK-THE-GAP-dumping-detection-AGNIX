@@ -99,7 +99,8 @@ class GarbageDetector:
         Used by the CCTV live monitoring system.
         """
         img_array = np.array(pil_image)
-        results = self.model(img_array, verbose=False, conf=0.15, device=self.device)
+        # Use a very low internal threshold to catch everything possible
+        results = self.model(img_array, verbose=False, conf=0.1, device=self.device)
 
         detections = []
         max_confidence = 0.0
@@ -115,6 +116,10 @@ class GarbageDetector:
                 xyxy = box.xyxy[0].tolist()
                 x1, y1, x2, y2 = [int(v) for v in xyxy]
 
+                # LOG EVERYTHING for debugging
+                if conf > 0.1:
+                    print(f"  🔍 Seen: {label} ({conf:.1%})")
+
                 detections.append({
                     "label": label,
                     "confidence": round(conf, 4),
@@ -124,6 +129,7 @@ class GarbageDetector:
                 if conf > max_confidence:
                     max_confidence = conf
 
+                # Broad keywords check
                 if label.lower() in self.garbage_keywords:
                     garbage_detected = True
 
@@ -142,8 +148,11 @@ class GarbageDetector:
                 )
                 draw.text((x1, y1 - 18), text, fill=(255, 255, 255))
 
-        if not garbage_detected and max_confidence > 0.5:
-            garbage_detected = True
+        # Fallback: if we see ANY non-human object with high confidence, consider it garbage for the demo
+        if not garbage_detected and max_confidence > 0.4:
+            # Check if index 0 (person) is the only thing. If the best isn't a person, flag it.
+            if detections and detections[0]["label"] != "person":
+                garbage_detected = True
 
         # Convert annotated image → base64
         buffer = io.BytesIO()
