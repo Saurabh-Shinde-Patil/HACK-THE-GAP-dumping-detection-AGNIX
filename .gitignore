@@ -1,0 +1,29 @@
+# Node
+**/node_modules
+**/dist
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# Python
+**/__pycache__/
+**/.venv/
+**/venv/
+**/env/
+**/*.py[cod]
+**/*$py.class
+**/.pytest_cache/
+**/.python-version
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.log
+
+# Project Specific
+backend/uploads/*
+!backend/uploads/.gitkeep
+frontend/dist/
+ai-service/yolov8n.pt
