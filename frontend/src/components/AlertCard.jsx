@@ -15,6 +15,61 @@ const statusLabels = {
   'false-positive': { icon: '❌', text: 'False Positive', color: '#6b7280' },
 };
 
+const AlertTracker = ({ status }) => {
+  const steps = [
+    { id: 'pending', label: 'Detected', icon: '🔴' },
+    { id: 'assigned', label: 'Assigned', icon: '👷' },
+    { id: 'resolved', label: 'Resolved', icon: '✅' }
+  ];
+  let currentStepIndex = 0;
+  if (status === 'assigned') currentStepIndex = 1;
+  if (status === 'resolved') currentStepIndex = 2;
+  if (status === 'false-positive') currentStepIndex = -1;
+
+  if (currentStepIndex === -1) return null;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', marginTop: 12, marginBottom: 20, padding: '0 4px', maxWidth: '300px' }}>
+      {steps.map((step, index) => {
+        const isCompleted = index <= currentStepIndex;
+        const isActive = index === currentStepIndex;
+        const isLast = index === steps.length - 1;
+        
+        return (
+          <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 'none' : 1 }}>
+            {/* Circle */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isCompleted ? 'rgba(59,130,246,0.8)' : 'rgba(255,255,255,0.05)',
+                border: isActive ? '2px solid #fff' : `2px solid ${isCompleted ? 'rgba(59,130,246,0.8)' : 'rgba(255,255,255,0.2)'}`,
+                color: isCompleted ? '#fff' : 'rgba(255,255,255,0.4)',
+                fontSize: '0.8rem', zIndex: 2, transition: 'all 0.3s ease'
+              }}>
+                {isCompleted ? '✓' : step.icon}
+              </div>
+              <span style={{ 
+                position: 'absolute', top: 30, fontSize: '0.65rem', fontWeight: isActive ? 700 : 500,
+                color: isCompleted ? '#93c5fd' : 'var(--text-muted)', whiteSpace: 'nowrap'
+              }}>
+                {step.label}
+              </span>
+            </div>
+            {/* Connector Line */}
+            {!isLast && (
+              <div style={{
+                flex: 1, height: 3, margin: '0 4px', borderRadius: 2,
+                background: index < currentStepIndex ? 'rgba(59,130,246,0.8)' : 'rgba(255,255,255,0.1)',
+                transition: 'background 0.3s ease'
+              }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function AlertCard({ detection, onUpdate, workers = [] }) {
   const [expanded, setExpanded] = useState(false);
   const [assignWorker, setAssignWorker] = useState('');
@@ -28,6 +83,37 @@ export default function AlertCard({ detection, onUpdate, workers = [] }) {
       data.assignedTo = assignWorker;
     }
     onUpdate?.(detection._id, data);
+  };
+
+  const handleNavigation = () => {
+    const coords = detection.location?.coordinates;
+    if (!coords || coords.length !== 2) {
+      alert("Error: CCTV Location coordinates are missing.");
+      return;
+    }
+    const [destLng, destLat] = coords;
+
+    if (!navigator.geolocation) {
+      alert("Your browser does not support Geolocation.");
+      return;
+    }
+
+    const btn = document.getElementById(`cctv-nav-${detection._id}`);
+    if (btn) btn.innerHTML = '⏳...';
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (btn) btn.innerHTML = '🧭 Navigate';
+        const { latitude, longitude } = pos.coords;
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${destLat},${destLng}&travelmode=driving`;
+        window.open(url, '_blank');
+      },
+      (err) => {
+        if (btn) btn.innerHTML = '🧭 Navigate';
+        alert("Could not get your location. Please enable location permissions.");
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
   };
 
   const imageUrl = detection.imageBase64
@@ -150,9 +236,28 @@ export default function AlertCard({ detection, onUpdate, workers = [] }) {
         </div>
       )}
 
+      {/* Dynamic Tracker */}
+      <AlertTracker status={detection.status} />
+
       {/* Actions */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+        {detection.status !== 'false-positive' && (
+          <button 
+            id={`cctv-nav-${detection._id}`}
+            className="btn btn-secondary btn-sm" 
+            style={{ 
+              background: 'rgba(34,197,94,0.15)', color: '#4ade80', 
+              border: '1px solid rgba(34,197,94,0.3)', fontWeight: 600,
+              padding: '5px 12px', fontSize: '0.75rem', borderRadius: 8
+            }}
+            onClick={handleNavigation}
+          >
+            🧭 Navigate
+          </button>
+        )}
+
       {detection.status !== 'resolved' && detection.status !== 'false-positive' && (
-        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <>
           {detection.status === 'pending' && (
             <button
               onClick={() => handleAction('acknowledged')}
@@ -215,8 +320,9 @@ export default function AlertCard({ detection, onUpdate, workers = [] }) {
           >
             ❌ False Positive
           </button>
-        </div>
+        </>
       )}
     </div>
-  );
+  </div>
+);
 }
