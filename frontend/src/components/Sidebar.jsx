@@ -71,6 +71,17 @@ export default function Sidebar() {
         <div className="sidebar-logo">
           <h1>🏙️ CleanCity</h1>
           <span>AI Waste Surveillance</span>
+          <div style={{ 
+            fontSize: '1.3rem', 
+            fontWeight: 800, 
+            marginTop: '0px', 
+            background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            छत्रपती संभाजीनगर
+          </div>
         </div>
 
         <nav className="sidebar-nav">
