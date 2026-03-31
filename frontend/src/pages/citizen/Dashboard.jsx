@@ -26,7 +26,7 @@ const ReportTrackerCard = ({ report }) => {
         <img 
           src={report.image} 
           alt="report"
-          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}
+          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--glass-border)' }}
           onError={e => { e.target.style.display = 'none'; }}
         />
         
@@ -58,9 +58,9 @@ const ReportTrackerCard = ({ report }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
                       <div style={{
                         width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: isCompleted ? 'var(--accent-green)' : 'rgba(255,255,255,0.05)',
-                        border: isActive ? '2px solid #fff' : `2px solid ${isCompleted ? 'var(--accent-green)' : 'rgba(255,255,255,0.2)'}`,
-                        color: isCompleted ? '#fff' : 'rgba(255,255,255,0.4)',
+                        background: isCompleted ? 'var(--accent-green)' : 'var(--glass)',
+                        border: isActive ? '2px solid var(--text-primary)' : `2px solid ${isCompleted ? 'var(--accent-green)' : 'var(--glass-border)'}`,
+                        color: isCompleted ? '#fff' : 'var(--text-muted)',
                         fontSize: '1rem', zIndex: 2, transition: 'all 0.3s ease'
                       }}>
                         {isCompleted ? '✓' : step.icon}
@@ -76,7 +76,7 @@ const ReportTrackerCard = ({ report }) => {
                     {!isLast && (
                       <div style={{
                         flex: 1, height: 4, margin: '0 8px', borderRadius: 2,
-                        background: index < currentStepIndex ? 'var(--accent-green)' : 'rgba(255,255,255,0.1)',
+                        background: index < currentStepIndex ? 'var(--accent-green)' : 'var(--glass)',
                         transition: 'background 0.3s ease'
                       }} />
                     )}
