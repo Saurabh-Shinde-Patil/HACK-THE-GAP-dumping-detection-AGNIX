@@ -27,3 +27,7 @@ backend/uploads/*
 !backend/uploads/.gitkeep
 frontend/dist/
 ai-service/yolov8n.pt
+
+# Sensitive/Private Docs
+demonstration_guide.md
+DEPLOYMENT.md
