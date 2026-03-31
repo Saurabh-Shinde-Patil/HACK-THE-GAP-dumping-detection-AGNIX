@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import ThemeToggle from './components/ThemeToggle';
 
 // Pages
 import Login from './pages/Login';
@@ -57,6 +58,7 @@ const AppRoutes = () => {
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeToggle />
       <AuthProvider>
         <SocketProvider>
           <AppRoutes />

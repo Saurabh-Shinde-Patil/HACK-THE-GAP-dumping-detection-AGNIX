@@ -41,16 +41,16 @@ const AlertTracker = ({ status }) => {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
               <div style={{
                 width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: isCompleted ? 'rgba(59,130,246,0.8)' : 'rgba(255,255,255,0.05)',
-                border: isActive ? '2px solid #fff' : `2px solid ${isCompleted ? 'rgba(59,130,246,0.8)' : 'rgba(255,255,255,0.2)'}`,
-                color: isCompleted ? '#fff' : 'rgba(255,255,255,0.4)',
+                background: isCompleted ? 'var(--accent-blue)' : 'var(--glass)',
+                border: isActive ? '2px solid var(--text-primary)' : `2px solid ${isCompleted ? 'var(--accent-blue)' : 'var(--glass-border)'}`,
+                color: isCompleted ? '#fff' : 'var(--text-muted)',
                 fontSize: '0.8rem', zIndex: 2, transition: 'all 0.3s ease'
               }}>
                 {isCompleted ? '✓' : step.icon}
               </div>
               <span style={{ 
                 position: 'absolute', top: 30, fontSize: '0.65rem', fontWeight: isActive ? 700 : 500,
-                color: isCompleted ? '#93c5fd' : 'var(--text-muted)', whiteSpace: 'nowrap'
+                color: isCompleted ? 'var(--accent-blue)' : 'var(--text-muted)', whiteSpace: 'nowrap'
               }}>
                 {step.label}
               </span>
@@ -59,7 +59,7 @@ const AlertTracker = ({ status }) => {
             {!isLast && (
               <div style={{
                 flex: 1, height: 3, margin: '0 4px', borderRadius: 2,
-                background: index < currentStepIndex ? 'rgba(59,130,246,0.8)' : 'rgba(255,255,255,0.1)',
+                background: index < currentStepIndex ? 'var(--accent-blue)' : 'var(--glass)',
                 transition: 'background 0.3s ease'
               }} />
             )}
