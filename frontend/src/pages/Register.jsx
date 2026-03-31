@@ -29,6 +29,19 @@ export default function Register() {
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '4rem', marginBottom: '16px' }}>🏙️</div>
           <div className="brand-title">CleanCity AI</div>
+          <div style={{ 
+            fontSize: '2.8rem', 
+            fontWeight: 800, 
+            marginTop: '-16px',
+            marginBottom: '16px',
+            background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontFamily: "'Outfit', sans-serif"
+          }}>
+            छत्रपती संभाजीनगर
+          </div>
           <p className="brand-desc">Join thousands of citizens making their city cleaner and smarter.</p>
         </div>
       </div>
