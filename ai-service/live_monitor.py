@@ -18,9 +18,11 @@ import argparse
 import base64
 import cv2
 import io
+import urllib.request
 import json
 import os
 import sys
+import logging
 import time
 import threading
 from datetime import datetime
@@ -45,9 +47,23 @@ DETECTION_API_KEY = os.environ.get("DETECTION_API_KEY", "cleancity-detection-key
 # Camera defaults
 DEFAULT_CAMERA_ID = "cam-001"
 DEFAULT_CAMERA_NAME = "Main Gate Camera"
-DEFAULT_LAT = 19.8762
-DEFAULT_LNG = 75.3433
-DEFAULT_ADDRESS = "Chhatrapati Sambhajinagar (Aurangabad)"
+
+def get_live_location():
+    try:
+        logging.info("🌍 Requesting live IP Geolocation from ip-api.com...")
+        req = urllib.request.Request('http://ip-api.com/json/', headers={'User-Agent': 'Mozilla/5.0'})
+        response = urllib.request.urlopen(req, timeout=5)
+        data = json.loads(response.read().decode('utf-8'))
+        if data.get('status') == 'success':
+            logging.info(f"📍 Location Acquired: {data.get('city')} ({data.get('lat')}, {data.get('lon')})")
+            return data.get('lat', 19.8762), data.get('lon', 75.3433), f"{data.get('city', 'Unknown City')}, {data.get('regionName', '')}"
+    except Exception as e:
+        logging.warning(f"⚠️ Failed to fetch live IP geolocation: {e}. Using fallback coordinates.")
+    return 19.8762, 75.3433, "Chhatrapati Sambhajinagar (Aurangabad)"
+
+# Dynamically fetch the real coordinates of the deployment
+DEFAULT_LAT, DEFAULT_LNG, DEFAULT_ADDRESS = get_live_location()
+
 DEFAULT_WARD = "Ward-1"
 
 # Detection settings
@@ -81,18 +97,27 @@ class VideoStream:
         self.stopped = False
 
         if self.stream.isOpened():
-            self.grabbed, self.frame = self.stream.read()
+            # Initial read to verify it's working
+            try:
+                self.grabbed, self.frame = self.stream.read()
+            except Exception as e:
+                logging.warning(f"Error on initial stream read: {e}")
+            
             self.thread = threading.Thread(target=self._update, daemon=True)
             self.thread.start()
 
     def _update(self):
         while not self.stopped:
-            grabbed, frame = self.stream.read()
-            with self.lock:
-                self.grabbed = grabbed
-                self.frame = frame
-            if not grabbed:
-                time.sleep(0.1)  # small pause before retrying
+            try:
+                grabbed, frame = self.stream.read()
+                with self.lock:
+                    self.grabbed = grabbed
+                    self.frame = frame
+                if not grabbed:
+                    time.sleep(0.1)  # small pause before retrying
+            except Exception as e:
+                logging.error(f"Stream read error: {e}")
+                time.sleep(0.5)
 
     def read(self):
         with self.lock:
@@ -226,14 +251,14 @@ def open_source(args):
             sys.exit(1)
 
         url = args.url
-        cap = VideoStream(url)
+        cap = VideoStream(url, backend=cv2.CAP_FFMPEG)
 
         if not cap.isOpened():
             print(f"  ⚠️  Initial connection to {url} failed. Trying suffixes...")
             for suffix in ["/video", "/mjpegfeed"]:
                 test_url = url.rstrip('/') + suffix
                 print(f"  🔍 Trying: {test_url}")
-                cap = VideoStream(test_url)
+                cap = VideoStream(test_url, backend=cv2.CAP_FFMPEG)
                 if cap.isOpened():
                     url = test_url
                     break
