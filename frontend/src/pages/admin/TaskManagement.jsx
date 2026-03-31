@@ -63,6 +63,39 @@ export default function TaskManagement() {
     } catch (err) { alert('Update failed'); }
   };
 
+  const handleNavigation = (task) => {
+    const coords = task.reportId?.location?.coordinates;
+    if (!coords || coords.length !== 2) {
+      alert("Error: Location coordinates are missing for this task.");
+      return;
+    }
+    const [destLng, destLat] = coords;
+
+    if (!navigator.geolocation) {
+      alert("Your browser does not support Geolocation.");
+      return;
+    }
+
+    const btn = document.getElementById(`nav-btn-${task._id}`);
+    if (btn) btn.innerHTML = '⏳ Locating...';
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (btn) btn.innerHTML = '🧭 Get Directions';
+        const { latitude, longitude } = pos.coords;
+        // Generate a deep link to Google Maps driving directions
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${destLat},${destLng}&travelmode=driving`;
+        window.open(url, '_blank');
+      },
+      (err) => {
+        if (btn) btn.innerHTML = '🧭 Get Directions';
+        alert("Could not get your location. Please enable location permissions.");
+        console.error(err);
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
+
   return (
     <div className="app-layout">
       <Sidebar />
@@ -153,8 +186,28 @@ export default function TaskManagement() {
                         👷 {task.assignedWorker?.name || '–'} · Ward: {task.reportId?.ward || '–'}
                       </div>
                       {task.notes && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>📝 {task.notes}</div>}
+                      
+                      {/* Live GPS Navigation for Workers */}
+                      {user?.role === 'worker' && task.status !== 'completed' && task.status !== 'verified' && (
+                        <div style={{ marginTop: 12 }}>
+                          <button 
+                            id={`nav-btn-${task._id}`}
+                            className="btn btn-secondary btn-sm" 
+                            style={{ 
+                              background: 'rgba(59,130,246,0.15)', 
+                              color: '#60a5fa', 
+                              border: '1px solid rgba(59,130,246,0.3)',
+                              fontWeight: 600
+                            }}
+                            onClick={() => handleNavigation(task)}
+                          >
+                            🧭 Get Directions
+                          </button>
+                        </div>
+                      )}
+
                       {task.completionImage && (
-                        <div style={{ marginTop: 8 }}>
+                        <div style={{ marginTop: 12 }}>
                           <img src={task.completionImage} alt="completed" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6 }} />
                         </div>
                       )}

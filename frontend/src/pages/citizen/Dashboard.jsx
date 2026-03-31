@@ -5,6 +5,93 @@ import { getReports, getReportStats } from '../../services/api';
 
 const statusIcon = { pending: '⏳', assigned: '📋', 'in-progress': '🔄', completed: '✅', rejected: '❌' };
 
+const ReportTrackerCard = ({ report }) => {
+  const steps = [
+    { id: 'pending', label: 'Reported', icon: '📝' },
+    { id: 'assigned', label: 'Assigned', icon: '👷' },
+    { id: 'in-progress', label: 'Cleaning', icon: '🧹' },
+    { id: 'completed', label: 'Resolved', icon: '✅' }
+  ];
+
+  let currentStepIndex = 0;
+  if (report.status === 'assigned') currentStepIndex = 1;
+  if (report.status === 'in-progress') currentStepIndex = 2;
+  if (report.status === 'completed' || report.status === 'verified') currentStepIndex = 3;
+  if (report.status === 'rejected') currentStepIndex = -1; // Specific red state
+
+  return (
+    <div className="card" style={{ marginBottom: 16, padding: '20px', background: 'var(--glass)' }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* Thumbnail */}
+        <img 
+          src={report.image} 
+          alt="report"
+          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}
+          onError={e => { e.target.style.display = 'none'; }}
+        />
+        
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>📍 {report.address}</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              {new Date(report.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            </span>
+          </div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>Ward: {report.ward || 'Unknown'}</div>
+          
+          {report.status === 'rejected' ? (
+            <div style={{ padding: '12px', borderRadius: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
+              ❌ This report was reviewed and rejected.
+            </div>
+          ) : (
+            /* E-commerce Style Tracker Bar */
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 16, padding: '0 10px' }}>
+              {steps.map((step, index) => {
+                const isCompleted = index <= currentStepIndex;
+                const isActive = index === currentStepIndex;
+                const isLast = index === steps.length - 1;
+                
+                return (
+                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 'none' : 1 }}>
+                    {/* Circle */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: isCompleted ? 'var(--accent-green)' : 'rgba(255,255,255,0.05)',
+                        border: isActive ? '2px solid #fff' : `2px solid ${isCompleted ? 'var(--accent-green)' : 'rgba(255,255,255,0.2)'}`,
+                        color: isCompleted ? '#fff' : 'rgba(255,255,255,0.4)',
+                        fontSize: '1rem', zIndex: 2, transition: 'all 0.3s ease'
+                      }}>
+                        {isCompleted ? '✓' : step.icon}
+                      </div>
+                      <span style={{ 
+                        position: 'absolute', top: 40, fontSize: '0.7rem', fontWeight: isActive ? 700 : 500,
+                        color: isCompleted ? 'var(--accent-green)' : 'var(--text-muted)', whiteSpace: 'nowrap'
+                      }}>
+                        {step.label}
+                      </span>
+                    </div>
+                    {/* Connector Line */}
+                    {!isLast && (
+                      <div style={{
+                        flex: 1, height: 4, margin: '0 8px', borderRadius: 2,
+                        background: index < currentStepIndex ? 'var(--accent-green)' : 'rgba(255,255,255,0.1)',
+                        transition: 'background 0.3s ease'
+                      }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div style={{ marginTop: 24 }} /> {/* spacing for absolutely positioned labels */}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function CitizenDashboard() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,54 +156,10 @@ export default function CitizenDashboard() {
               <p>No reports yet. <Link to="/report/new" style={{ color: 'var(--accent-green)' }}>Submit your first one!</Link></p>
             </div>
           ) : (
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Image</th>
-                    <th>Location</th>
-                    <th>Status</th>
-                    <th>Severity</th>
-                    <th>AI Confidence</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reports.map((r) => (
-                    <tr key={r._id}>
-                      <td>
-                        <img src={r.image} alt="report"
-                          style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }}
-                          onError={e => { e.target.style.display = 'none'; }}
-                        />
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{r.address}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.ward}</div>
-                      </td>
-                      <td>
-                        <span className={`badge badge-${r.status}`}>{statusIcon[r.status]} {r.status}</span>
-                      </td>
-                      <td>
-                        <span className={`badge badge-${r.severity}`}>{r.severity}</span>
-                      </td>
-                      <td>
-                        <div style={{ minWidth: '80px' }}>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 3 }}>
-                            {Math.round((r.detectionConfidence || 0) * 100)}%
-                          </div>
-                          <div className="confidence-bar">
-                            <div className="confidence-bar-fill" style={{ width: `${(r.detectionConfidence || 0) * 100}%` }} />
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {reports.map((r) => (
+                <ReportTrackerCard key={r._id} report={r} />
+              ))}
             </div>
           )}
         </div>
