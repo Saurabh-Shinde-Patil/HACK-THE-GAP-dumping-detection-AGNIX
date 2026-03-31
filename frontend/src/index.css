@@ -163,23 +163,23 @@ body {
 
 .global-theme-toggle {
   position: fixed;
-  top: 16px;
-  right: 24px;
-  z-index: 9999;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
   background: var(--glass);
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow: var(--shadow);
   transition: var(--transition);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
 }
 
 .global-theme-toggle:hover {
@@ -338,6 +338,7 @@ body {
   margin-bottom: 28px;
   flex-wrap: wrap;
   gap: 16px;
+  padding-right: 55px; /* Reserve space for the global theme toggle */
 }
 
 .page-title {
