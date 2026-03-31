@@ -72,6 +72,7 @@ export default function TaskManagement() {
   const [statusFilter, setStatusFilter] = useState('');
   const [completingId, setCompletingId] = useState(null);
   const [completionFile, setCompletionFile] = useState(null);
+  const [openMapTask, setOpenMapTask] = useState(null);
 
   const canAssign = ['admin', 'superadmin'].includes(user?.role);
 
@@ -118,6 +119,13 @@ export default function TaskManagement() {
   };
 
   const handleNavigation = (task) => {
+    if (openMapTask?.id === task._id) {
+      setOpenMapTask(null);
+      const btn = document.getElementById(`nav-btn-${task._id}`);
+      if (btn) btn.innerHTML = '🧭 Get Directions';
+      return;
+    }
+
     const coords = task.reportId?.location?.coordinates;
     if (!coords || coords.length !== 2) {
       alert("Error: Location coordinates are missing for this task.");
@@ -135,11 +143,11 @@ export default function TaskManagement() {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (btn) btn.innerHTML = '🧭 Get Directions';
+        if (btn) btn.innerHTML = '🧭 Hide Map';
         const { latitude, longitude } = pos.coords;
-        // Generate a deep link to Google Maps driving directions
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${destLat},${destLng}&travelmode=driving`;
-        window.open(url, '_blank');
+        const embedUrl = `https://maps.google.com/maps?saddr=${latitude},${longitude}&daddr=${destLat},${destLng}&output=embed`;
+        const fullUrl = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${destLat},${destLng}&travelmode=driving`;
+        setOpenMapTask({ id: task._id, embedUrl, fullUrl });
       },
       (err) => {
         if (btn) btn.innerHTML = '🧭 Get Directions';
@@ -258,7 +266,7 @@ export default function TaskManagement() {
                             }}
                             onClick={() => handleNavigation(task)}
                           >
-                            🧭 Get Directions
+                            {openMapTask?.id === task._id ? '🧭 Hide Map' : '🧭 Get Directions'}
                           </button>
                         </div>
                       )}
@@ -296,6 +304,27 @@ export default function TaskManagement() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Inline Map Embed */}
+                  {openMapTask?.id === task._id && (
+                    <div style={{ marginTop: 16, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                      <div style={{ padding: '8px 12px', background: 'var(--glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>Live Route Directions</span>
+                        <a href={openMapTask.fullUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>
+                          Open Full Maps ↗
+                        </a>
+                      </div>
+                      <iframe 
+                        width="100%" 
+                        height="300" 
+                        frameBorder="0" 
+                        style={{ border: 0, display: 'block', background: 'var(--bg-primary)' }} 
+                        src={openMapTask.embedUrl} 
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                  )}
+
                 </div>
               ))}
             </div>

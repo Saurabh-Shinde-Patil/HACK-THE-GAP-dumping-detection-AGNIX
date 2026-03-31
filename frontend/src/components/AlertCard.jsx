@@ -73,6 +73,8 @@ const AlertTracker = ({ status }) => {
 export default function AlertCard({ detection, onUpdate, workers = [] }) {
   const [expanded, setExpanded] = useState(false);
   const [assignWorker, setAssignWorker] = useState('');
+  const [mapData, setMapData] = useState(null);
+  
   const sev = sevColors[detection.severity] || sevColors.medium;
   const st = statusLabels[detection.status] || statusLabels.pending;
   const isNew = detection.status === 'pending' && (Date.now() - new Date(detection.createdAt || detection._alertTs).getTime()) < 60000;
@@ -86,6 +88,13 @@ export default function AlertCard({ detection, onUpdate, workers = [] }) {
   };
 
   const handleNavigation = () => {
+    if (mapData) {
+      setMapData(null);
+      const btn = document.getElementById(`cctv-nav-${detection._id}`);
+      if (btn) btn.innerHTML = '🧭 Navigate';
+      return;
+    }
+
     const coords = detection.location?.coordinates;
     if (!coords || coords.length !== 2) {
       alert("Error: CCTV Location coordinates are missing.");
@@ -103,10 +112,11 @@ export default function AlertCard({ detection, onUpdate, workers = [] }) {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (btn) btn.innerHTML = '🧭 Navigate';
+        if (btn) btn.innerHTML = '🧭 Hide Map';
         const { latitude, longitude } = pos.coords;
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${destLat},${destLng}&travelmode=driving`;
-        window.open(url, '_blank');
+        const embedUrl = `https://maps.google.com/maps?saddr=${latitude},${longitude}&daddr=${destLat},${destLng}&output=embed`;
+        const fullUrl = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${destLat},${destLng}&travelmode=driving`;
+        setMapData({ embedUrl, fullUrl });
       },
       (err) => {
         if (btn) btn.innerHTML = '🧭 Navigate';
@@ -252,7 +262,7 @@ export default function AlertCard({ detection, onUpdate, workers = [] }) {
             }}
             onClick={handleNavigation}
           >
-            🧭 Navigate
+            {mapData ? '🧭 Hide Map' : '🧭 Navigate'}
           </button>
         )}
 
@@ -323,6 +333,27 @@ export default function AlertCard({ detection, onUpdate, workers = [] }) {
         </>
       )}
     </div>
+
+    {/* Map Embed Section */}
+    {mapData && (
+      <div style={{ marginTop: 16, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+        <div style={{ padding: '8px 12px', background: 'var(--glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>Live Route Directions</span>
+          <a href={mapData.fullUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>
+            Open Full Maps ↗
+          </a>
+        </div>
+        <iframe 
+          width="100%" 
+          height="300" 
+          frameBorder="0" 
+          style={{ border: 0, display: 'block', background: 'var(--bg-primary)' }} 
+          src={mapData.embedUrl} 
+          allowFullScreen
+        ></iframe>
+      </div>
+    )}
+
   </div>
 );
 }
