@@ -6,6 +6,60 @@ import { useAuth } from '../../context/AuthContext';
 const statusBadge = { pending: 'badge-pending', 'in-progress': 'badge-in-progress', completed: 'badge-completed', verified: 'badge-completed' };
 const priorityBadge = { low: 'badge-low', medium: 'badge-medium', high: 'badge-high', urgent: 'badge-critical' };
 
+const TaskTracker = ({ status }) => {
+  const steps = [
+    { id: 'pending', label: 'Assigned', icon: '👷' },
+    { id: 'in-progress', label: 'Cleaning', icon: '🧹' },
+    { id: 'completed', label: 'Resolved', icon: '✅' },
+    { id: 'verified', label: 'Verified', icon: '🔍' }
+  ];
+  let currentStepIndex = 0;
+  if (status === 'in-progress') currentStepIndex = 1;
+  if (status === 'completed') currentStepIndex = 2;
+  if (status === 'verified') currentStepIndex = 3;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', marginTop: 16, marginBottom: 20, padding: '0 4px', maxWidth: '350px' }}>
+      {steps.map((step, index) => {
+        const isCompleted = index <= currentStepIndex;
+        const isActive = index === currentStepIndex;
+        const isLast = index === steps.length - 1;
+        
+        return (
+          <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 'none' : 1 }}>
+            {/* Circle */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isCompleted ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                border: isActive ? '2px solid #fff' : `2px solid ${isCompleted ? 'var(--accent-blue)' : 'rgba(255,255,255,0.2)'}`,
+                color: isCompleted ? '#fff' : 'rgba(255,255,255,0.4)',
+                fontSize: '0.85rem', zIndex: 2, transition: 'all 0.3s ease'
+              }}>
+                {isCompleted ? '✓' : step.icon}
+              </div>
+              <span style={{ 
+                position: 'absolute', top: 32, fontSize: '0.65rem', fontWeight: isActive ? 700 : 500,
+                color: isCompleted ? 'var(--accent-blue)' : 'var(--text-muted)', whiteSpace: 'nowrap'
+              }}>
+                {step.label}
+              </span>
+            </div>
+            {/* Connector Line */}
+            {!isLast && (
+              <div style={{
+                flex: 1, height: 3, margin: '0 4px', borderRadius: 2,
+                background: index < currentStepIndex ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)',
+                transition: 'background 0.3s ease'
+              }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function TaskManagement() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
@@ -187,8 +241,11 @@ export default function TaskManagement() {
                       </div>
                       {task.notes && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>📝 {task.notes}</div>}
                       
-                      {/* Live GPS Navigation for Workers */}
-                      {user?.role === 'worker' && task.status !== 'completed' && task.status !== 'verified' && (
+                      {/* E-Commerce Style Tracker */}
+                      <TaskTracker status={task.status} />
+
+                      {/* Live GPS Navigation for Everyone (Admins & Workers) */}
+                      {task.status !== 'completed' && task.status !== 'verified' && (
                         <div style={{ marginTop: 12 }}>
                           <button 
                             id={`nav-btn-${task._id}`}
